@@ -25,7 +25,11 @@ impl State {
             HashMap::new()
         };
 
-        Self { accounts, block_number: 0, state_root: StateRoot::default() }
+        Self {
+            accounts,
+            block_number: 0,
+            state_root: StateRoot::default(),
+        }
     }
 
     pub fn get_state_root(&self) -> &StateRoot {

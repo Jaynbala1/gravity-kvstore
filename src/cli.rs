@@ -1,5 +1,5 @@
-use gravity_sdk::api::GravityNodeArgs;
 use clap::Parser;
+use gravity_sdk::api::GravityNodeArgs;
 use std::ffi::OsString;
 
 /// This is the entrypoint to the executable.

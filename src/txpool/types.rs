@@ -68,7 +68,10 @@ fn convert_account(acc: &str) -> Result<[u8; 32], String> {
     let acc_bytes = hex::decode(acc).unwrap();
 
     if acc_bytes.len() != 20 {
-        return Err(format!("Invalid length: expected 20 bytes, got {}", acc_bytes.len()));
+        return Err(format!(
+            "Invalid length: expected 20 bytes, got {}",
+            acc_bytes.len()
+        ));
     }
 
     let mut bytes = [0u8; 32];

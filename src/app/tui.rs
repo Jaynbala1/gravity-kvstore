@@ -48,11 +48,7 @@ struct App {
 }
 
 impl App {
-    fn new(
-        state: Arc<RwLock<State>>,
-        storage: Arc<dyn Storage>,
-        mempool: KvStoreTxPool,
-    ) -> Self {
+    fn new(state: Arc<RwLock<State>>, storage: Arc<dyn Storage>, mempool: KvStoreTxPool) -> Self {
         let keypair = crypto::generate_keypair();
         let address = crypto::public_key_to_address(&keypair.public_key);
         let mut send_tx_inputs = [String::new(), String::new(), String::new()];
@@ -174,12 +170,15 @@ impl App {
         let secp = Secp256k1::new();
         let public_key = PublicKey::from_secret_key(&secp, &private_key);
         let address = crypto::public_key_to_address(&public_key);
-        
+
         let unsigned_transaction = UnsignedTransaction {
-            nonce: self.state.read().await.get_account(
-                &address
-            ).map(|s| s.nonce)
-            .unwrap_or(0), 
+            nonce: self
+                .state
+                .read()
+                .await
+                .get_account(&address)
+                .map(|s| s.nonce)
+                .unwrap_or(0),
             kind: TransactionKind::SetKV {
                 key: key.clone(),
                 value: value.clone(),
@@ -192,8 +191,6 @@ impl App {
             unsigned: unsigned_transaction,
             signature,
         };
-
-        
 
         let txn_with_account = TransactionWithAccount {
             txn: transaction,
@@ -217,7 +214,9 @@ impl App {
                 Some(value) => self.query_value_result = format!("Value: {}", value),
                 None => self.query_value_result = format!("Error: Key not found {}", key),
             },
-            None => self.query_value_result = format!("Error: Account not found {}", account_address),
+            None => {
+                self.query_value_result = format!("Error: Account not found {}", account_address)
+            }
         }
     }
 }
@@ -247,7 +246,7 @@ pub async fn run_tui(
     let mut terminal = Terminal::new(backend)?;
 
     let app = App::new(state, storage, mempool);
-    
+
     // 使用 tokio::select! 来处理信号
     let res = tokio::select! {
         result = run_app(&mut terminal, app) => result,

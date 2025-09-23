@@ -1,19 +1,26 @@
 use crate::{
-    compute_transaction_hash, verify_signature, AccountId, AccountState, Block, BlockHeader, KvStoreTxPool, State, StateRoot, Storage, Transaction, TransactionKind, TransactionReceipt, TransactionWithAccount
+    compute_transaction_hash, verify_signature, AccountId, AccountState, Block, BlockHeader,
+    KvStoreTxPool, State, StateRoot, Storage, Transaction, TransactionKind, TransactionReceipt,
+    TransactionWithAccount,
 };
 
-use gravity_sdk::block_buffer_manager::get_block_buffer_manager;
 use futures::lock::Mutex;
+use gravity_sdk::block_buffer_manager::get_block_buffer_manager;
 use gravity_sdk::gaptos::api_types::ExternalBlock;
-use tracing::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::*;
 
 pub struct PipelineExecutor;
 
 impl PipelineExecutor {
-    pub async fn run(start_num: u64, storage: Arc<dyn Storage>, state: Arc<RwLock<State>>, pool: KvStoreTxPool) {
+    pub async fn run(
+        start_num: u64,
+        storage: Arc<dyn Storage>,
+        state: Arc<RwLock<State>>,
+        pool: KvStoreTxPool,
+    ) {
         let pending_blocks = Arc::new(Mutex::new(HashMap::new()));
         let pending_blocks_clone = pending_blocks.clone();
         tokio::spawn(async move {
@@ -31,8 +38,9 @@ impl PipelineExecutor {
         pending_blocks: Arc<Mutex<HashMap<u64, (StateRoot, Block)>>>,
     ) {
         loop {
-            let ordered_blocks =
-                get_block_buffer_manager().get_ordered_blocks(start_num, max_size).await;
+            let ordered_blocks = get_block_buffer_manager()
+                .get_ordered_blocks(start_num, max_size)
+                .await;
             if let Err(e) = ordered_blocks {
                 warn!("failed to get ordered blocks: {}", e);
                 continue;
@@ -70,7 +78,10 @@ impl PipelineExecutor {
             let receipt = Self::execute_transaction(&tx.txn, &state).unwrap();
             if let Some(receipt) = receipt {
                 for (account_id, state_update) in receipt.state_updates {
-                    state.update_account_state(&account_id, state_update).await.unwrap();
+                    state
+                        .update_account_state(&account_id, state_update)
+                        .await
+                        .unwrap();
                 }
             }
         }
@@ -89,11 +100,18 @@ impl PipelineExecutor {
         state.get_state_root().0
     }
 
-    fn execute_transaction(tx: &Transaction, state: &State) -> Result<Option<TransactionReceipt>, String> {
+    fn execute_transaction(
+        tx: &Transaction,
+        state: &State,
+    ) -> Result<Option<TransactionReceipt>, String> {
         let sender = verify_signature(tx)?;
         let sender_id = AccountId(sender.clone());
         let mut updates = vec![];
-        tracing::info!("Executing transaction from {} nonce {}", sender, tx.unsigned.nonce);
+        tracing::info!(
+            "Executing transaction from {} nonce {}",
+            sender,
+            tx.unsigned.nonce
+        );
 
         let mut sender_state = state
             .get_account(&sender_id.0)
@@ -105,7 +123,13 @@ impl PipelineExecutor {
             });
 
         if tx.unsigned.nonce < sender_state.nonce {
-            tracing::warn!("Invalid nonce, tx nonce {}, tx {:?}, state nonce {}, whole state {:?}", tx.unsigned.nonce, tx, sender_state.nonce, state);
+            tracing::warn!(
+                "Invalid nonce, tx nonce {}, tx {:?}, state nonce {}, whole state {:?}",
+                tx.unsigned.nonce,
+                tx,
+                sender_state.nonce,
+                state
+            );
             return Ok(None);
         }
 
@@ -129,7 +153,11 @@ impl PipelineExecutor {
                         kv_store: account.kv_store.clone(),
                     }
                 } else {
-                    AccountState { nonce: 0, balance: 0, kv_store: HashMap::new() }
+                    AccountState {
+                        nonce: 0,
+                        balance: 0,
+                        kv_store: HashMap::new(),
+                    }
                 };
                 sender_state.balance -= amount;
                 receiver_state.balance += amount;
@@ -156,11 +184,12 @@ impl PipelineExecutor {
         max_size: Option<usize>,
         storage: Arc<dyn Storage>,
         pending_blocks: Arc<Mutex<HashMap<u64, (StateRoot, Block)>>>,
-        pool: KvStoreTxPool
+        pool: KvStoreTxPool,
     ) {
         loop {
-            let committed_blocks =
-                get_block_buffer_manager().get_committed_blocks(start_num, max_size).await;
+            let committed_blocks = get_block_buffer_manager()
+                .get_committed_blocks(start_num, max_size)
+                .await;
             if let Err(e) = committed_blocks {
                 warn!("failed to get committed blocks: {}", e);
                 continue;
@@ -168,9 +197,13 @@ impl PipelineExecutor {
             let committed_blocks = committed_blocks.unwrap();
             start_num += committed_blocks.len() as u64;
             for block_id_num_hash in committed_blocks {
-                let res =
-                    Self::persist_block(block_id_num_hash.num, &pending_blocks, storage.as_ref(), &pool)
-                        .await;
+                let res = Self::persist_block(
+                    block_id_num_hash.num,
+                    &pending_blocks,
+                    storage.as_ref(),
+                    &pool,
+                )
+                .await;
                 if let Err(e) = res {
                     warn!("failed to persist block: {}", e);
                 }
@@ -187,11 +220,13 @@ impl PipelineExecutor {
         let mut pending_blocks = pending_blocks.lock().await;
         let (state_root, final_block) = pending_blocks.remove(&block_number).unwrap();
         for txn in &final_block.transactions {
-            
             pool.remove_txn(&txn.account(), txn.sequence_number());
         }
         storage.save_block(&final_block).await.unwrap();
-        storage.save_state_root(final_block.header.number, state_root).await.unwrap();
+        storage
+            .save_state_root(final_block.header.number, state_root)
+            .await
+            .unwrap();
         info!("Block {} persisted", block_number);
         Ok(())
     }
