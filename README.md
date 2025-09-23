@@ -33,68 +33,18 @@ This command generates the optimized executable gravity_sdk_kvstore in the targe
 To deploy and start the server in single-node mode, perform the following steps from the project root:
 
 ```bash
-rm -rf /tmp/node1
+ ./deploy_utils/deploy.sh --mode single --node node1 --bin_version release
+ /tmp/node1/script/start.sh
 
-./deploy_utils/deploy.sh --mode single --node node1 -v debug -b gravity_sdk_kvstore
-
-./target/release/gravity_sdk_kvstore \
-    --genesis_path $genesis_path \
-    --listen_url $url \
-    --gravity_node_config $validator.yaml \
-    --log_dir $log_dir
 ```
 
-### Cluster Deployment
-
-For a cluster deployment with four nodes, execute the following commands:
-
-```bash
-rm -rf /tmp/node1 /tmp/node2 /tmp/node3 /tmp/node4
-
-./deploy_utils/deploy.sh --mode cluster --node node1 -v debug -b gravity_sdk_kvstore
-./deploy_utils/deploy.sh --mode cluster --node node2 -v debug -b gravity_sdk_kvstore
-./deploy_utils/deploy.sh --mode cluster --node node3 -v debug -b gravity_sdk_kvstore
-./deploy_utils/deploy.sh --mode cluster --node node4 -v debug -b gravity_sdk_kvstore
-
-./target/release/gravity_sdk_kvstore \
-    --genesis_path $genesis_path \
-    --listen_url $url_node1 \
-    --gravity_node_config $validator_node1 \
-    --log_dir $log_dir_node1
-./target/release/gravity_sdk_kvstore \
-    --genesis_path $genesis_path \
-    --listen_url $url_node2 \
-    --gravity_node_config $validator_node2 \
-    --log_dir $log_dir_node2
-./target/release/gravity_sdk_kvstore \
-    --genesis_path $genesis_path \
-    --listen_url $url_node3 \
-    --gravity_node_config $validator_node3 \
-    --log_dir $log_dir_node3
-./target/release/gravity_sdk_kvstore \
-    --genesis_path $genesis_path \
-    --listen_url $url_node4 \
-    --gravity_node_config $validator_node4 \
-    --log_dir $log_dir_node4
-```
-
-### Explanation:
-1. **`deploy.sh` Script**: Prepares the environment and deploys the server in single-node mode.
-2. **Command-Line Arguments for `kvstore`**:
-   - `--gravity_node_config`: Specifies the path to the node configuration file (e.g., validator.yaml).
-   - `--listen_url`: Defines the server's listening address and port (e.g., 127.0.0.1:8545).
-   - `--log_dir`: Sets the path to the log directory for the key-value store.
-   - `--genesis_path`: Provides the path to the genesis file.
-
-After executing these steps, the server will be operational and ready to receive requests.
-
----
 
 ## Usage
 
+### Network
 Interact with the server using the following HTTP endpoints, assuming the server address is 127.0.0.1:9006.
 
-### add_txn
+#### add_txn
 
 Submit a transaction to the system via the add_txn endpoint. Upon successful submission, the transaction hash is returned.
 
@@ -113,7 +63,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
 }' http://127.0.0.1:9006/add_txn
 ```
 
-### get_receipt
+#### get_receipt
 
 Retrieve the transaction receipt using the transaction hash.
 
@@ -123,7 +73,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
 }' http://127.0.0.1:9006/get_receipt
 ```
 
-### get_value
+#### get_value
 
 Set a key-value pair under an account namespace and retrieve it using the get_value endpoint.
 
@@ -134,20 +84,39 @@ curl -X POST -H "Content-Type: application/json" -d '[
 ]' http://127.0.0.1:9006/get_value
 ```
 
+
+### Shell
+
+The application includes an interactive shell for direct interaction. To start the shell, run the binary with the `shell` subcommand:
+
+Once in the shell, you can use the following commands:
+
+- **`user <private_key_hex>`**: Switch the current user context by providing a private key in hexadecimal format.
+  ```
+  >> user 289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032
+  Switched user to: 0x7e5f4552091a69125d5dfcb7b8c2659029395bdf
+  ```
+
+- **`set <key> <value>`**: Set a key-value pair for the currently active user. This will create and send a transaction to the mempool.
+  ```
+  [7e5f...5bdf]>> set mykey myvalue
+  Transaction sent! Hash: 28c823812f564f35873111e3c81e28b212d0005d15c2a472c1c6e611802aaf21
+  ```
+
+- **`get <key>`**: Retrieve the value associated with a key for the current user.
+  ```
+  [7e5f...5bdf]>> get mykey
+  Value: myvalue
+  ```
+
+- **`query_txn <txn_hash>`**: Query the status of a submitted transaction using its hash.
+  ```
+  [7e5f...5bdf]>> query_txn 28c823812f564f35873111e3c81e28b212d0005d15c2a472c1c6e611802aaf21
+  Transaction receipt: Receipt { ... }
+  ```
+
+- **`help` or `?`**: Display the list of available commands.
+
+- **`exit`**: Exit the interactive shell.
+
 ---
-
-## Troubleshooting
-
-- Ensure that the `gravity_sdk_kvstore` binary is correctly built and accessible.
-- Verify that the `gravity_node_config` file path is valid and points to the correct configuration.
-
----
-
-## Notes
-- This is a lightweight implementation for demonstration and learning purposes.
-- For production-grade systems, consider additional features such as authentication, and clustering.
-
----
-
-## License
-This project is open-source and available under the MIT license. Feel free to contribute or modify as needed!

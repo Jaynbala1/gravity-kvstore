@@ -1,14 +1,13 @@
-use block_buffer_manager::TxPool;
-use gaptos::api_types::account::ExternalAccountAddress;
-use gaptos::api_types::u256_define::TxnHash;
-use gaptos::api_types::VerifiedTxn;
-use gaptos::aptos_logger::info;
-use tracing::warn;
+use gravity_sdk::block_buffer_manager::TxPool;
+use gravity_sdk::gaptos::api_types::account::ExternalAccountAddress;
+use gravity_sdk::gaptos::api_types::u256_define::TxnHash;
+use gravity_sdk::gaptos::api_types::VerifiedTxn;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Deref;
 use std::sync::Arc;
+use tracing::warn;
 
-use crate::{compute_transaction_hash, Transaction, TransactionWithAccount};
+use crate::{compute_transaction_hash, TransactionWithAccount};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TxnStatus {
@@ -76,7 +75,10 @@ impl MempoolInner {
         let account = txn.sender().clone();
         let sequence_number = txn.seq_number();
         let status = TxnStatus::Waiting;
-        let mempool_txn = MempoolTxn { raw_txn: txn.into(), status };
+        let mempool_txn = MempoolTxn {
+            raw_txn: txn.into(),
+            status,
+        };
         self.mempool
             .lock()
             .unwrap()
@@ -141,7 +143,11 @@ impl TxPool for KvStoreTxPool {
                         return None;
                     }
                 }
-                tracing::info!("sending txn: sender {:?} nonce {:?}", verified_txn.sender(), verified_txn.seq_number());
+                tracing::info!(
+                    "sending txn: sender {:?} nonce {:?}",
+                    verified_txn.sender(),
+                    verified_txn.seq_number()
+                );
                 Some(verified_txn)
             })
         }));

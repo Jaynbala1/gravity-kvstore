@@ -1,5 +1,5 @@
-use api::GravityNodeArgs;
 use clap::Parser;
+use gravity_sdk::api::GravityNodeArgs;
 use std::ffi::OsString;
 
 /// This is the entrypoint to the executable.
@@ -17,6 +17,9 @@ pub struct Cli {
 
     #[arg(long = "listen_url")]
     pub listen_url: String,
+
+    #[arg(long = "db_dir")]
+    pub db_dir: String,
 }
 
 impl Cli {

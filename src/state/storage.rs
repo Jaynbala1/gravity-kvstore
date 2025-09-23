@@ -63,7 +63,9 @@ impl Storage for SledStorage {
             .insert(Self::block_key(block.header.number), encoded)
             .map_err(|e| format!("Failed to save block: {}", e))?;
 
-        self.db.flush().map_err(|e| format!("Failed to flush database: {}", e))?;
+        self.db
+            .flush()
+            .map_err(|e| format!("Failed to flush database: {}", e))?;
 
         Ok(())
     }
@@ -128,7 +130,9 @@ impl Storage for SledStorage {
             .insert(Self::state_root_key(block_number), encoded)
             .map_err(|e| format!("Failed to save state root: {}", e))?;
 
-        self.db.flush().map_err(|e| format!("Failed to flush database: {}", e))?;
+        self.db
+            .flush()
+            .map_err(|e| format!("Failed to flush database: {}", e))?;
 
         Ok(())
     }
@@ -157,7 +161,9 @@ impl Storage for SledStorage {
             .insert(Self::account_key(account_id), encoded)
             .map_err(|e| format!("Failed to save account state: {}", e))?;
 
-        self.db.flush().map_err(|e| format!("Failed to flush database: {}", e))?;
+        self.db
+            .flush()
+            .map_err(|e| format!("Failed to flush database: {}", e))?;
 
         Ok(())
     }

@@ -1,5 +1,5 @@
 mod server;
-mod tui;
+mod shell;
 
 pub use server::*;
-pub use tui::*;
+pub use shell::*;

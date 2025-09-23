@@ -1,11 +1,12 @@
 [package]
-name = "gravity_sdk_kvstore"
+name = "gravity-kvstore"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
 
 [dependencies]
-gaptos.workspace = true
-futures.workspace = true
+gravity-sdk = { git = "https://github.com/Galxe/gravity-sdk"}
+futures = "0.3.29"
 bincode = "1.3"
 blake3 = "1.3"
 hex = "0.4"
@@ -14,24 +15,40 @@ secp256k1 = { version = "0.27", features = ["rand-std", "recovery"] }
 sled = "0.34"
 rand = "0.8"
 tracing = "0.1"
-api.workspace = true
-poem.workspace = true
-poem-openapi.workspace = true
-poem-openapi-derive.workspace = true
-thiserror.workspace = true
-# api-types.workspace = true
-tokio.workspace = true
-serde_json.workspace = true
-serde.workspace = true
-async-trait = { workspace = true }
+poem = { version = "3.1.3" }
+thiserror = "1.0.37"
+tokio = { version = "1.35.1", features = ["full"] }
+serde = { version = "1.0.193", features = ["derive", "rc"] }
+serde-big-array = "0.5.1"
+serde_bytes = "0.11.6"
+serde_json = { version = "1.0.81", features = [
+    "preserve_order",
+    "arbitrary_precision",
+] } # Note: arbitrary_precision is required to parse u256 in JSON
+async-trait = "0.1.53"
 clap = { version = "4.3.9", features = ["derive", "env", "unstable-styles"] }
 clap-verbosity-flag = "2.1.1"
 clap_complete = "4.4.1"
 clap_derive = "4.5.18"
-block-buffer-manager.workspace = true
 ratatui = { version = "0.26.1", features = ["all-widgets"] }
 crossterm = "0.27.0"
 tracing-subscriber = "0.3"
 tracing-appender = "0.2"
-bcs.workspace = true
+bcs = { git = "https://github.com/aptos-labs/bcs.git", rev = "d31fab9d81748e2594be5cd5cdf845786a30562d" }
 bytes = { version = "1.4.0", features = ["serde"] }
+rustyline = "17.0.1"
+
+[patch.crates-io]
+darling = { git = "https://github.com/TedDriggs/darling.git", rev = "v0.20.10"}
+serde-reflection = { git = "https://github.com/aptos-labs/serde-reflection", rev = "73b6bbf748334b71ff6d7d09d06a29e3062ca075" }
+merlin = { git = "https://github.com/aptos-labs/merlin" }
+x25519-dalek = { git = "https://github.com/aptos-labs/x25519-dalek", rev = "b9cdbaf36bf2a83438d9f660e5a708c82ed60d8e" }
+futures = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-channel = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-executor = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-core = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-util = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-sink = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-io = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-task = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }
+futures-macro = { git = "https://github.com/aptos-labs/futures-rs", branch = "backport" }

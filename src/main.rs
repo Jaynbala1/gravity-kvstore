@@ -1,15 +1,30 @@
-use api::{
+pub mod app;
+pub mod cli;
+pub mod crypto;
+pub mod executor;
+pub mod state;
+pub mod txpool;
+
+pub use crypto::*;
+pub use executor::*;
+pub use state::*;
+pub use txpool::*;
+
+use app::Shell;
+use app::ServerApp;
+use clap::Parser;
+use cli::Cli;
+use gravity_sdk::api::{
     check_bootstrap_config,
     consensus_api::{ConsensusEngine, ConsensusEngineArgs},
 };
-use clap::Parser;
-use cli::Cli;
-use gaptos::{api_types::{config_storage::{ConfigStorage, OnChainConfig, OnChainConfigResType}, on_chain_config::{validator_config::ValidatorConfig, validator_info::ValidatorInfo}, u256_define::AccountAddress}, move_core_types::gas_algebra::Byte};
-use gravity_sdk_kvstore::{app::ServerApp, *};
-use app::run_tui;
-use tracing_subscriber::fmt;
-use std::{error::Error, fs::File, sync::Arc};
-use gaptos::api_types::on_chain_config::validator_set::ValidatorSet;
+use gravity_sdk::gaptos::api_types::on_chain_config::validator_set::ValidatorSet;
+use gravity_sdk::gaptos::api_types::{
+        config_storage::{ConfigStorage, OnChainConfig, OnChainConfigResType},
+        on_chain_config::{validator_config::ValidatorConfig, validator_info::ValidatorInfo},
+        u256_define::AccountAddress,
+    };
+use std::{error::Error, fs::File, path::PathBuf, sync::Arc};
 
 pub struct KvOnChainConfig;
 
@@ -19,7 +34,6 @@ impl ConfigStorage for KvOnChainConfig {
         config_name: OnChainConfig,
         _block_number: u64,
     ) -> Option<OnChainConfigResType> {
-        
         let gravity_validator_set: ValidatorSet = ValidatorSet {
             active_validators: vec![
                 ValidatorInfo::new(
@@ -39,30 +53,21 @@ impl ConfigStorage for KvOnChainConfig {
             total_joining_power: 1,
         };
         match config_name {
-            OnChainConfig::ValidatorSet  => {
-                Some(
-                    OnChainConfigResType::from(
-                        bytes::Bytes::from(bcs::to_bytes(&gravity_validator_set).unwrap())
-                    )
-                )
-            }
+            OnChainConfig::ValidatorSet => Some(OnChainConfigResType::from(bytes::Bytes::from(
+                bcs::to_bytes(&gravity_validator_set).unwrap(),
+            ))),
             OnChainConfig::ConsensusConfig => {
                 let bytes = vec![
                     3, 1, 1, 10, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 10,
                     0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
                 ];
                 let bytes = bytes::Bytes::from(bytes);
-                let res : OnChainConfigResType = bytes.into();
+                let res: OnChainConfigResType = bytes.into();
                 Some(res)
-            },
-            OnChainConfig::Epoch => {
-                Some(
-                    OnChainConfigResType::from(
-                        bytes::Bytes::from(1u64.to_le_bytes().to_vec())
-                    )
-                )
-
             }
+            OnChainConfig::Epoch => Some(OnChainConfigResType::from(bytes::Bytes::from(
+                1u64.to_le_bytes().to_vec(),
+            ))),
             _ => None,
         }
     }
@@ -82,14 +87,18 @@ impl ConfigStorage for KvOnChainConfig {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    let file = File::create("app.log").expect("无法创建日志文件");
-    
+    let log_dir = cli.log_dir.clone();
+    let log_dir = PathBuf::from(log_dir);
+    let log_file = log_dir.join("kv.log");
+    let file = File::create(&log_file)
+        .unwrap_or_else(|_| panic!("无法创建日志文件: {}", log_file.display()));
+
     tracing_subscriber::fmt()
         .with_writer(file)
         .with_ansi(false) // 文件中不使用颜色代码
         .init();
     let gcei_config = check_bootstrap_config(cli.gravity_node_config.node_config_path.clone());
-    let storage = Arc::new(SledStorage::new("blockchain_db")?);
+    let storage = Arc::new(SledStorage::new(cli.db_dir.clone())?);
     let genesis_path = cli.genesis_path.clone();
     let blockchain = Blockchain::new(storage.clone(), genesis_path);
     let listen_url = cli.listen_url.clone();
@@ -103,8 +112,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         server.start(listen_url.as_str()).await.unwrap();
     });
     let mempool_clone = mempool.clone();
-    let tui_task = tokio::spawn(async move {
-        run_tui(state, storage, mempool_clone).await.unwrap();
+    let mut shell = Shell::new(state, storage, mempool_clone);
+    let shell_task = tokio::spawn(async move {
+        shell.run().await;
     });
 
     let mempool_clone = mempool.clone();
@@ -124,7 +134,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     tokio::select! {
-        _ = tui_task => {},
+        _ = shell_task => {},
         _ = blockchain_task => {},
     }
 

@@ -1,5 +1,4 @@
 use hex::decode;
-use tracing::info;
 use poem::{
     error::ResponseError,
     handler,
@@ -12,9 +11,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::info;
 
 use crate::{
-    verify_signature, KvStoreTxPool, State, Storage, Transaction, TransactionReceipt, TransactionWithAccount
+    verify_signature, KvStoreTxPool, State, Storage, Transaction, TransactionReceipt,
+    TransactionWithAccount,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -92,8 +93,14 @@ async fn add_txn(
     info!("add_txn: transaction: {:?}", transaction);
     let account_address =
         verify_signature(&transaction).map_err(|e| TransactionError::InvalidSignature(e))?;
-    info!("add_txn: txn {:?}, address: {}", transaction, account_address);
-    let txn_with_account = TransactionWithAccount { txn: transaction, address: account_address };
+    info!(
+        "add_txn: txn {:?}, address: {}",
+        transaction, account_address
+    );
+    let txn_with_account = TransactionWithAccount {
+        txn: transaction,
+        address: account_address,
+    };
     let txn_hash = context.mempool.add_raw_txn(txn_with_account);
     Ok(Json(json!({
         "status": "success",
@@ -135,9 +142,17 @@ async fn get_value(
     Json((account_address, key)): Json<(String, String)>,
     Data(context): Data<&Arc<Context>>,
 ) -> poem::Result<Json<Value>> {
-    info!("get_value: account_address: {}, key: {}", account_address, key);
+    info!(
+        "get_value: account_address: {}, key: {}",
+        account_address, key
+    );
     // Retrieve the value from the account's key-value store
-    match context.state.read().await.get_account(account_address.as_str()) {
+    match context
+        .state
+        .read()
+        .await
+        .get_account(account_address.as_str())
+    {
         Some(account) => match account.kv_store.get(&key) {
             Some(value) => Ok(Json(json!(value))),
             None => Err(TransactionError::KeyNotFound.into()),
@@ -151,18 +166,36 @@ pub struct ServerApp {
 }
 
 impl ServerApp {
-    pub fn new(state: Arc<RwLock<State>>, storage: Arc<dyn Storage>, mempool: KvStoreTxPool) -> Self {
-        Self { context: Arc::new(Context { state, storage, mempool }) }
+    pub fn new(
+        state: Arc<RwLock<State>>,
+        storage: Arc<dyn Storage>,
+        mempool: KvStoreTxPool,
+    ) -> Self {
+        Self {
+            context: Arc::new(Context {
+                state,
+                storage,
+                mempool,
+            }),
+        }
     }
 
     pub async fn start(&self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
         let app = Route::new()
             .at("/add_txn", poem::post(add_txn.data(self.context.clone())))
-            .at("/get_receipt", poem::post(get_receipt.data(self.context.clone())))
-            .at("/get_value", poem::post(get_value.data(self.context.clone())));
+            .at(
+                "/get_receipt",
+                poem::post(get_receipt.data(self.context.clone())),
+            )
+            .at(
+                "/get_value",
+                poem::post(get_value.data(self.context.clone())),
+            );
 
         info!("Server running at {}", addr);
-        Server::new(listener::TcpListener::bind(addr)).run(app).await?;
+        Server::new(listener::TcpListener::bind(addr))
+            .run(app)
+            .await?;
 
         Ok(())
     }

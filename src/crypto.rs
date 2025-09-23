@@ -18,7 +18,10 @@ pub fn generate_keypair() -> KeyPair {
     let mut rng = OsRng::default();
     let (secret_key, public_key) = secp.generate_keypair(&mut rng);
 
-    KeyPair { secret_key, public_key }
+    KeyPair {
+        secret_key,
+        public_key,
+    }
 }
 
 pub fn sign_transaction(tx: &UnsignedTransaction, secret_key: &SecretKey) -> String {
