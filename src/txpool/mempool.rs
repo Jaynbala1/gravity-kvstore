@@ -2,13 +2,12 @@ use gravity_sdk::block_buffer_manager::TxPool;
 use gravity_sdk::gaptos::api_types::account::ExternalAccountAddress;
 use gravity_sdk::gaptos::api_types::u256_define::TxnHash;
 use gravity_sdk::gaptos::api_types::VerifiedTxn;
-use gravity_sdk::gaptos::aptos_logger::info;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Deref;
 use std::sync::Arc;
 use tracing::warn;
 
-use crate::{compute_transaction_hash, Transaction, TransactionWithAccount};
+use crate::{compute_transaction_hash, TransactionWithAccount};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TxnStatus {

@@ -19,16 +19,12 @@ use gravity_sdk::api::{
     consensus_api::{ConsensusEngine, ConsensusEngineArgs},
 };
 use gravity_sdk::gaptos::api_types::on_chain_config::validator_set::ValidatorSet;
-use gravity_sdk::gaptos::{
-    api_types::{
+use gravity_sdk::gaptos::api_types::{
         config_storage::{ConfigStorage, OnChainConfig, OnChainConfigResType},
         on_chain_config::{validator_config::ValidatorConfig, validator_info::ValidatorInfo},
         u256_define::AccountAddress,
-    },
-    move_core_types::gas_algebra::Byte,
-};
+    };
 use std::{error::Error, fs::File, path::PathBuf, sync::Arc};
-use tracing_subscriber::fmt;
 
 pub struct KvOnChainConfig;
 

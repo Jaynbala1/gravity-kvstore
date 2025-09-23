@@ -1,7 +1,6 @@
 use std::{
     error::Error,
     io::{self},
-    str::FromStr,
     sync::Arc,
 };
 
