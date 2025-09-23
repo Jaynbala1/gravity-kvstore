@@ -89,17 +89,13 @@ function start_node() {
     
     echo ${WORKSPACE}
 
-    pid=$(
-        env ${env_vars_str} ${WORKSPACE}/bin/${bin_name}  \
-            --listen_url ${listen_url} \
-            --log_dir ${log_dir} \
-            --genesis_path ${genesis_path} \
-            --gravity_node_config ${validator_config} \
-            --db_dir ${db_dir} \
-	    > ${WORKSPACE}/logs/debug.log &
-        echo $!
-    )
-    echo $pid >${WORKSPACE}/script/node.pid
+    # 前台运行，直接显示输出
+    env ${env_vars_str} ${WORKSPACE}/bin/${bin_name}  \
+        --listen_url ${listen_url} \
+        --log_dir ${log_dir} \
+        --genesis_path ${genesis_path} \
+        --gravity_node_config ${validator_config} \
+        --db_dir ${db_dir}
 }
 
 echo "start ${bin_name}"

@@ -10,7 +10,7 @@ pub use executor::*;
 pub use state::*;
 pub use txpool::*;
 
-use app::run_tui;
+use app::Shell;
 use app::ServerApp;
 use clap::Parser;
 use cli::Cli;
@@ -112,8 +112,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         server.start(listen_url.as_str()).await.unwrap();
     });
     let mempool_clone = mempool.clone();
-    let tui_task = tokio::spawn(async move {
-        run_tui(state, storage, mempool_clone).await.unwrap();
+    let mut shell = Shell::new(state, storage, mempool_clone);
+    let shell_task = tokio::spawn(async move {
+        shell.run().await;
     });
 
     let mempool_clone = mempool.clone();
@@ -133,7 +134,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     tokio::select! {
-        _ = tui_task => {},
+        _ = shell_task => {},
         _ = blockchain_task => {},
     }
 
