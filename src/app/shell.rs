@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 
 pub struct Shell {
     state: Arc<RwLock<State>>,
-    _storage: Arc<dyn Storage>,
+    storage: Arc<dyn Storage>,
     mempool: KvStoreTxPool,
     keypair: Option<KeyPair>,
 }
@@ -25,7 +25,7 @@ impl Shell {
     ) -> Self {
         Self {
             state,
-            _storage: storage,
+            storage,
             mempool,
             keypair: None,
         }
@@ -38,10 +38,26 @@ impl Shell {
         }
 
         loop {
-            let readline = rl.readline(">> ");
+            let prompt = if let Some(keypair) = &self.keypair {
+                let address = crypto::public_key_to_address(&keypair.public_key);
+                let address_str = format!("{}", address);
+                let short_address = if address_str.len() > 10 {
+                    format!(
+                        "{}...{}",
+                        &address_str[..6],
+                        &address_str[address_str.len() - 4..]
+                    )
+                } else {
+                    address_str
+                };
+                format!("[{}]>> ", short_address)
+            } else {
+                ">> ".to_string()
+            };
+            let readline = rl.readline(&prompt);
             match readline {
                 Ok(line) => {
-                    rl.add_history_entry(line.as_str());
+                    rl.add_history_entry(line.as_str()).unwrap();
                     let args: Vec<&str> = line.trim().split_whitespace().collect();
                     if args.is_empty() {
                         continue;
@@ -62,7 +78,6 @@ impl Shell {
                 }
             }
         }
-        rl.save_history("history.txt").unwrap();
     }
 
     async fn handle_command(&mut self, args: Vec<&str>) {
@@ -72,6 +87,7 @@ impl Shell {
             "get" => self.handle_get_command(args).await,
             "query_txn" => self.handle_query_txn_command(args).await,
             "help" => self.print_help(),
+            "?" => self.print_help(),
             "exit" => {
                 println!("Exiting.");
                 std::process::exit(0);
@@ -194,7 +210,19 @@ impl Shell {
             println!("Usage: query_txn <txn_hash>");
             return;
         }
-        println!("'query_txn' is not implemented yet.");
+        let res = hex::decode(args[1]);
+        if res.is_err() {
+            println!("Error: Invalid transaction hash: {}", res.err().unwrap());
+            return;
+        }
+        let mut txn_hash = [0u8; 32];
+        txn_hash.copy_from_slice(res.unwrap().as_slice());
+        let res = self.storage.get_transaction_receipt(txn_hash).await;
+        match res {
+            Ok(Some(receipt)) => println!("Transaction receipt: {:?}", receipt),
+            Ok(None) => println!("Transaction receipt not found"),
+            Err(e) => println!("Error: {}", e),
+        }
     }
 
     fn print_help(&self) {

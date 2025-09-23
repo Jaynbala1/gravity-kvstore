@@ -35,7 +35,7 @@ impl PipelineExecutor {
         mut start_num: u64,
         max_size: Option<usize>,
         state: Arc<RwLock<State>>,
-        pending_blocks: Arc<Mutex<HashMap<u64, (StateRoot, Block)>>>,
+        pending_blocks: Arc<Mutex<HashMap<u64, (StateRoot, Block, Vec<TransactionReceipt>)>>>,
     ) {
         loop {
             let ordered_blocks = get_block_buffer_manager()
@@ -64,7 +64,7 @@ impl PipelineExecutor {
     async fn execute_block(
         block: ExternalBlock,
         state: &Arc<RwLock<State>>,
-        pending_blocks: &Arc<Mutex<HashMap<u64, (StateRoot, Block)>>>,
+        pending_blocks: &Arc<Mutex<HashMap<u64, (StateRoot, Block, Vec<TransactionReceipt>)>>>,
     ) -> [u8; 32] {
         // TODO: implement account dependencies when enable pipeline
         let mut state = state.write().await;
@@ -74,15 +74,17 @@ impl PipelineExecutor {
             .map(|tx| TransactionWithAccount::from(tx))
             .collect::<Vec<_>>();
         let parent_state_root = state.get_state_root().clone().0;
+        let mut receipts = vec![];
         for tx in &block_txns {
             let receipt = Self::execute_transaction(&tx.txn, &state).unwrap();
             if let Some(receipt) = receipt {
-                for (account_id, state_update) in receipt.state_updates {
+                for (account_id, state_update) in receipt.state_updates.clone() {
                     state
                         .update_account_state(&account_id, state_update)
                         .await
                         .unwrap();
                 }
+                receipts.push(receipt);
             }
         }
         let current_state_root = state.get_state_root().0;
@@ -96,7 +98,7 @@ impl PipelineExecutor {
             transactions: block_txns,
         };
         let mut pending_blocks = pending_blocks.lock().await;
-        pending_blocks.insert(block.header.number, (StateRoot(current_state_root), block));
+        pending_blocks.insert(block.header.number, (StateRoot(current_state_root), block, receipts));
         state.get_state_root().0
     }
 
@@ -183,7 +185,7 @@ impl PipelineExecutor {
         mut start_num: u64,
         max_size: Option<usize>,
         storage: Arc<dyn Storage>,
-        pending_blocks: Arc<Mutex<HashMap<u64, (StateRoot, Block)>>>,
+        pending_blocks: Arc<Mutex<HashMap<u64, (StateRoot, Block, Vec<TransactionReceipt>)>>>,
         pool: KvStoreTxPool,
     ) {
         loop {
@@ -213,16 +215,17 @@ impl PipelineExecutor {
 
     async fn persist_block(
         block_number: u64,
-        pending_blocks: &Mutex<HashMap<u64, (StateRoot, Block)>>,
+        pending_blocks: &Mutex<HashMap<u64, (StateRoot, Block, Vec<TransactionReceipt>)>>,
         storage: &dyn Storage,
         pool: &KvStoreTxPool,
     ) -> Result<(), String> {
         let mut pending_blocks = pending_blocks.lock().await;
-        let (state_root, final_block) = pending_blocks.remove(&block_number).unwrap();
+        let (state_root, final_block, receipts) = pending_blocks.remove(&block_number).unwrap();
         for txn in &final_block.transactions {
             pool.remove_txn(&txn.account(), txn.sequence_number());
         }
         storage.save_block(&final_block).await.unwrap();
+        storage.save_transaction_receipts(receipts).await.unwrap();
         storage
             .save_state_root(final_block.header.number, state_root)
             .await
