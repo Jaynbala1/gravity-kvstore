@@ -1,15 +1,29 @@
-use api::{
+pub mod cli;
+pub mod crypto;
+pub mod executor;
+pub mod app;
+pub mod state;
+pub mod txpool;
+
+
+pub use crypto::*;
+pub use executor::*;
+pub use state::*;
+pub use txpool::*;
+
+
+use gravity_sdk::api::{
     check_bootstrap_config,
     consensus_api::{ConsensusEngine, ConsensusEngineArgs},
 };
 use clap::Parser;
 use cli::Cli;
-use gaptos::{api_types::{config_storage::{ConfigStorage, OnChainConfig, OnChainConfigResType}, on_chain_config::{validator_config::ValidatorConfig, validator_info::ValidatorInfo}, u256_define::AccountAddress}, move_core_types::gas_algebra::Byte};
-use gravity_sdk_kvstore::{app::ServerApp, *};
+use gravity_sdk::gaptos::{api_types::{config_storage::{ConfigStorage, OnChainConfig, OnChainConfigResType}, on_chain_config::{validator_config::ValidatorConfig, validator_info::ValidatorInfo}, u256_define::AccountAddress}, move_core_types::gas_algebra::Byte};
+use app::ServerApp;
 use app::run_tui;
 use tracing_subscriber::fmt;
-use std::{error::Error, fs::File, sync::Arc};
-use gaptos::api_types::on_chain_config::validator_set::ValidatorSet;
+use std::{error::Error, fs::File, path::PathBuf, sync::Arc};
+use gravity_sdk::gaptos::api_types::on_chain_config::validator_set::ValidatorSet;
 
 pub struct KvOnChainConfig;
 
@@ -82,14 +96,18 @@ impl ConfigStorage for KvOnChainConfig {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    let file = File::create("app.log").expect("无法创建日志文件");
+    let log_dir = cli.log_dir.clone();
+    let log_dir = PathBuf::from(log_dir);
+    let log_file = log_dir.join("kv.log");
+    let file = File::create(&log_file)
+        .unwrap_or_else(|_| panic!("无法创建日志文件: {}", log_file.display()));
     
     tracing_subscriber::fmt()
         .with_writer(file)
         .with_ansi(false) // 文件中不使用颜色代码
         .init();
     let gcei_config = check_bootstrap_config(cli.gravity_node_config.node_config_path.clone());
-    let storage = Arc::new(SledStorage::new("blockchain_db")?);
+    let storage = Arc::new(SledStorage::new(cli.db_dir.clone())?);
     let genesis_path = cli.genesis_path.clone();
     let blockchain = Blockchain::new(storage.clone(), genesis_path);
     let listen_url = cli.listen_url.clone();

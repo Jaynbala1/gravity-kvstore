@@ -1,5 +1,5 @@
 use futures::channel::oneshot::Sender;
-use gaptos::api_types::{
+use gravity_sdk::gaptos::api_types::{
     account::{ExternalAccountAddress, ExternalChainId},
     compute_res::ComputeRes,
     simple_hash::hash_to_fixed_array,

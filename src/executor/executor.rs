@@ -2,9 +2,9 @@ use crate::{
     compute_transaction_hash, verify_signature, AccountId, AccountState, Block, BlockHeader, KvStoreTxPool, State, StateRoot, Storage, Transaction, TransactionKind, TransactionReceipt, TransactionWithAccount
 };
 
-use block_buffer_manager::get_block_buffer_manager;
+use gravity_sdk::block_buffer_manager::get_block_buffer_manager;
 use futures::lock::Mutex;
-use gaptos::api_types::ExternalBlock;
+use gravity_sdk::gaptos::api_types::ExternalBlock;
 use tracing::*;
 use std::collections::HashMap;
 use std::sync::Arc;

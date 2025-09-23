@@ -1,4 +1,4 @@
-use api::GravityNodeArgs;
+use gravity_sdk::api::GravityNodeArgs;
 use clap::Parser;
 use std::ffi::OsString;
 
@@ -17,6 +17,9 @@ pub struct Cli {
 
     #[arg(long = "listen_url")]
     pub listen_url: String,
+
+    #[arg(long = "db_dir")]
+    pub db_dir: String,
 }
 
 impl Cli {
